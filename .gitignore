@@ -1,0 +1,6 @@
+.venv/
+node_modules/
+artifacts/
+logs/
+*.bak
+.DS_Store

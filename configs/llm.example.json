@@ -1,0 +1,9 @@
+{
+  "provider": "openai-compatible",
+  "baseUrl": "http://localhost:11434/v1",
+  "model": "llama-3.2-70b-instruct",
+  "temperature": 0.2,
+  "maxOutputTokens": 800,
+  "jsonOutput": true,
+  "timeoutSec": 120
+}

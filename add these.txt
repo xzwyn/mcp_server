@@ -1,0 +1,351 @@
+File: project-root/configs/server.example.json
+
+{
+  "paths": {
+    "artifactsDir": "artifacts",
+    "cacheDir": "artifacts/cache",
+    "proposalsDir": "artifacts/proposals",
+    "contextsDir": "artifacts/contexts",
+    "mappingDir": "artifacts/mapping",
+    "diffsDir": "artifacts/diffs",
+    "reportsDir": "artifacts/reports",
+    "outputsDir": "artifacts/outputs"
+  },
+  "defaults": {
+    "kSnippets": 3,
+    "backup": true,
+    "noLlm": false
+  },
+  "source": {
+    "include": null,
+    "exclude": null
+  }
+}
+
+File: project-root/mcp-server/src/util/paths.js
+
+import path from "node:path";
+import url from "node:url";
+
+export function projectRootFromImportMeta(importMetaUrl) {
+  const mcpDir = path.dirname(url.fileURLToPath(importMetaUrl));
+  return path.resolve(path.join(mcpDir, ".."));
+}
+
+export function pythonCliPath(projectRoot) {
+  return path.join(projectRoot, "python", "tdf_pipeline", "cli.py");
+}
+
+File: project-root/mcp-server/src/util/schema.js
+
+// Minimal schema utilities (optional). The MCP SDK already validates inputs against schemas.
+// Provided for future extension if you want extra runtime checks.
+
+export function validateArgs(args, schema) {
+  // No-op: rely on MCP SDK schema validation.
+  return true;
+}
+
+File: project-root/mcp-server/src/tools/_common.js
+
+import { spawnCli } from "../util/processSpawner.js";
+import { pythonCliPath, projectRootFromImportMeta } from "../util/paths.js";
+
+const ROOT = projectRootFromImportMeta(import.meta.url);
+const PY_CLI = pythonCliPath(ROOT);
+
+export function buildArgs(subcommand, argsObj) {
+  const argv = [subcommand];
+  for (const [k, v] of Object.entries(argsObj || {})) {
+    if (v === undefined || v === null || v === "") continue;
+    if (typeof v === "boolean") {
+      if (v) argv.push(`--${k}`);
+    } else {
+      argv.push(`--${k}`, String(v));
+    }
+  }
+  return argv;
+}
+
+export async function runCli(subcommand, argsObj) {
+  const cliArgs = buildArgs(subcommand, argsObj);
+  return await spawnCli(PY_CLI, cliArgs);
+}
+
+File: project-root/mcp-server/src/tools/parse_requirements_csv.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "parse_requirements_csv",
+  description: "Parse requirements CSV into normalized JSON",
+  inputSchema: {
+    type: "object",
+    properties: {
+      csv: { type: "string", description: "Path to requirements CSV" },
+      mapping: { type: "string", description: "Path to CSV mapping JSON" },
+      out: { type: "string", description: "Output JSON path" }
+    },
+    required: ["csv"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("parse-requirements-csv", args);
+}
+
+File: project-root/mcp-server/src/tools/analyze_cpp_source.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "analyze_cpp_source",
+  description: "Analyze C++ source files for symbols and requirement tags",
+  inputSchema: {
+    type: "object",
+    properties: {
+      src: { type: "string", description: "Source root directory" },
+      idsJson: { type: "string", description: "Normalized requirements JSON path" },
+      include: { type: "string", description: "Optional glob to include files" },
+      exclude: { type: "string", description: "Optional glob to exclude files" },
+      out: { type: "string", description: "Output code index JSON path" }
+    },
+    required: ["src"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("analyze-cpp-source", args);
+}
+
+File: project-root/mcp-server/src/tools/parse_tdf.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "parse_tdf",
+  description: "Parse .tdf preserving formatting and block structure",
+  inputSchema: {
+    type: "object",
+    properties: {
+      tdf: { type: "string", description: "Path to input .tdf file" },
+      out: { type: "string", description: "Output parsed JSON path" }
+    },
+    required: ["tdf"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("parse-tdf", args);
+}
+
+File: project-root/mcp-server/src/tools/map_testids_to_requirements.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "map_testids_to_requirements",
+  description: "Map TESTIDs to requirements using tags and heuristics",
+  inputSchema: {
+    type: "object",
+    properties: {
+      parsedTdf: { type: "string", description: "Parsed TDF JSON path" },
+      requirements: { type: "string", description: "Requirements JSON path" },
+      codeIndex: { type: "string", description: "Code index JSON path (optional)" },
+      out: { type: "string", description: "Output mapping JSON path" }
+    },
+    required: ["parsedTdf", "requirements"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("map-testids-to-requirements", args);
+}
+
+File: project-root/mcp-server/src/tools/build_context_for_testid.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "build_context_for_testid",
+  description: "Build context bundle (requirement + code snippets) for a TESTID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      testId: { type: "string", description: "TESTID to build context for" },
+      mapping: { type: "string", description: "Mapping JSON path" },
+      requirements: { type: "string", description: "Requirements JSON path" },
+      codeIndex: { type: "string", description: "Code index JSON path (optional)" },
+      k: { type: "number", description: "Top-k code snippets", default: 3 },
+      out: { type: "string", description: "Output context JSON path" }
+    },
+    required: ["testId", "mapping", "requirements"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("build-context-for-testid", args);
+}
+
+File: project-root/mcp-server/src/tools/propose_update_for_testid.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "propose_update_for_testid",
+  description: "Use local LLM to propose updated content for a TESTID",
+  inputSchema: {
+    type: "object",
+    properties: {
+      testId: { type: "string", description: "TESTID to update" },
+      context: { type: "string", description: "Context bundle JSON path" },
+      llmConfig: { type: "string", description: "LLM config JSON path (optional)" },
+      out: { type: "string", description: "Output proposal JSON path" },
+      noLlm: { type: "boolean", description: "Bypass LLM and write placeholder" }
+    },
+    required: ["testId", "context"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("propose-update-for-testid", args);
+}
+
+File: project-root/mcp-server/src/tools/apply_updates_to_tdf.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "apply_updates_to_tdf",
+  description: "Merge proposals and write fully updated .tdf (format preserved)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      tdf: { type: "string", description: "Original .tdf path" },
+      parsedTdf: { type: "string", description: "Parsed TDF JSON path" },
+      proposalsDir: { type: "string", description: "Directory with per-TESTID proposals" },
+      outTdf: { type: "string", description: "Output updated .tdf path" },
+      diffsOut: { type: "string", description: "Output diffs JSON path (optional)" },
+      backup: { type: "boolean", description: "Create .bak of original" }
+    },
+    required: ["tdf", "parsedTdf", "proposalsDir", "outTdf"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("apply-updates-to-tdf", args);
+}
+
+File: project-root/mcp-server/src/tools/generate_report.js
+
+import { runCli } from "./_common.js";
+
+export const def = {
+  name: "generate_report",
+  description: "Generate Markdown report summarizing changes/evidence",
+  inputSchema: {
+    type: "object",
+    properties: {
+      proposalsDir: { type: "string", description: "Directory with proposals" },
+      diffs: { type: "string", description: "Diffs JSON path" },
+      mapping: { type: "string", description: "Mapping JSON path (optional)" },
+      out: { type: "string", description: "Output Markdown path" }
+    },
+    required: ["proposalsDir", "diffs", "out"],
+    additionalProperties: false
+  }
+};
+
+export async function handler(args) {
+  return await runCli("generate-report", args);
+}
+
+Optional: Updated server to use the tool modules (drop-in replacement for your existing mcp-tdf-server.mjs)
+
+File: project-root/mcp-server/mcp-tdf-server.mjs
+
+#!/usr/bin/env node
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+import * as parseRequirements from "./src/tools/parse_requirements_csv.js";
+import * as analyzeCpp from "./src/tools/analyze_cpp_source.js";
+import * as parseTdf from "./src/tools/parse_tdf.js";
+import * as mapTestids from "./src/tools/map_testids_to_requirements.js";
+import * as buildContext from "./src/tools/build_context_for_testid.js";
+import * as proposeUpdate from "./src/tools/propose_update_for_testid.js";
+import * as applyUpdates from "./src/tools/apply_updates_to_tdf.js";
+import * as generateReport from "./src/tools/generate_report.js";
+
+const transport = new StdioServerTransport();
+const server = new Server({
+  name: "tdf-updater",
+  version: "0.1.0",
+  description: "Local MCP server for TDF updates (granular toolset)",
+  transport
+});
+
+const tools = [
+  parseRequirements,
+  analyzeCpp,
+  parseTdf,
+  mapTestids,
+  buildContext,
+  proposeUpdate,
+  applyUpdates,
+  generateReport
+];
+
+for (const t of tools) {
+  server.addTool(t.def, t.handler);
+}
+
+await server.start();
+
+Optional convenience scripts
+
+File: project-root/scripts/setup_venv.bat
+
+@echo off
+setlocal
+if not exist ".venv" (
+  py -3.11 -m venv .venv
+)
+call .\.venv\Scripts\activate
+python -m pip install -U pip
+if exist python\requirements.txt (
+  pip install -r python\requirements.txt
+)
+echo Venv ready.
+
+File: project-root/scripts/run_server.bat
+
+@echo off
+setlocal
+REM Adjust PYTHON_EXE to your venv
+set PYTHON_EXE=%CD%\.venv\Scripts\python.exe
+cd mcp-server
+npm install
+node mcp-tdf-server.mjs
+
+File: project-root/scripts/orchestrate_all.bat
+
+@echo off
+setlocal
+call .\.venv\Scripts\activate
+python python\tdf_pipeline\cli.py orchestrate-update-all ^
+  --csv testdata\requirements.csv ^
+  --src testdata\src ^
+  --tdf testdata\sample.tdf ^
+  --outTdf artifacts\outputs\updated.tdf ^
+  --report artifacts\reports\update_report.md ^
+  --backup ^
+  --noLlm

@@ -1,0 +1,21 @@
+{
+  "paths": {
+    "artifactsDir": "artifacts",
+    "cacheDir": "artifacts/cache",
+    "proposalsDir": "artifacts/proposals",
+    "contextsDir": "artifacts/contexts",
+    "mappingDir": "artifacts/mapping",
+    "diffsDir": "artifacts/diffs",
+    "reportsDir": "artifacts/reports",
+    "outputsDir": "artifacts/outputs"
+  },
+  "defaults": {
+    "kSnippets": 3,
+    "backup": true,
+    "noLlm": false
+  },
+  "source": {
+    "include": null,
+    "exclude": null
+  }
+}

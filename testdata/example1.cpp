@@ -1,0 +1,1 @@
+REQ-1: This function implements X with Y int doX(int y) { // … return y + 1; }

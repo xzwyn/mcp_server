@@ -1,0 +1,9 @@
+{
+  "testcase": {
+    "blockStart": "^TESTID\\s*:\\s*(?<id>[A-Za-z0-9_\\-]+)\\s*$",
+    "blockEnd": "^(?=TESTID\\s*:)|\\Z",
+    "commentPrefix": "#",
+    "preserveIndentation": true,
+    "immutableHeader": true
+  }
+}

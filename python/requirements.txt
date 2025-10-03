@@ -1,0 +1,46 @@
+python
+package init
+File: project-root/python/tdf_pipeline/requirements_parser.py
+
+python import csv import json from pathlib import Path from typing import Dict, Any, List, Optional
+
+def parse_requirements(csv_path: str, mapping_path: Optional[str], out_path: Optional[str]) -> str: csv_p = Path(csv_path) if not csv_p.exists(): raise FileNotFoundError(f"CSV not found: {csv_path}")
+
+mapping = None
+if mapping_path:
+    mp = Path(mapping_path)
+    if mp.exists():
+        mapping = json.loads(mp.read_text(encoding="utf-8"))
+
+id_col = (mapping or {}).get("idColumn")
+title_col = (mapping or {}).get("titleColumn")
+text_col = (mapping or {}).get("textColumn")
+
+rows: List[Dict[str, Any]] = []
+with csv_p.open("r", encoding="utf-8", newline="") as f:
+    reader = csv.DictReader(f)
+    for r in reader:
+        rid = r.get(id_col) if id_col else (r.get("id") or r.get("ID") or r.get("RequirementID"))
+        title = r.get(title_col) if title_col else (r.get("title") or r.get("Title"))
+        text = r.get(text_col) if text_col else (r.get("text") or r.get("Description") or "")
+        if not rid:
+            # skip rows without ID
+            continue
+        rows.append({
+            "id": str(rid).strip(),
+            "title": (title or "").strip(),
+            "text": (text or "").strip(),
+            "raw": r
+        })
+
+data = {
+    "count": len(rows),
+    "requirements": rows,
+    "id_set": [r["id"] for r in rows]
+}
+
+out_file = out_path or str(csv_p.with_suffix(".requirements.json"))
+Path(out_file).parent.mkdir(parents=True, exist_ok=True)
+Path(out_file).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+return out_file
+

@@ -1,0 +1,4 @@
+python import json from pathlib import Path from typing import Dict, Any, List
+
+def top_k_snippets(requirement_id: str, code_index_path: str | None, k: int = 3) -> List[Dict[str, Any]]: if not code_index_path or not Path(code_index_path).exists(): return [] idx = json.loads(Path(code_index_path).read_text(encoding="utf-8")) # prefer symbols that have tags matching the requirement id tagged = [s for s in idx.get("symbols", []) if any(t.get("id") == requirement_id for t in s.get("tags", []))] selected = tagged[:k] if tagged else idx.get("symbols", [])[:k] # basic snippet: just include name and file out: List[Dict[str, Any]] = [] for s in selected: out.append({ "file": s.get("file"), "kind": s.get("kind"), "name": s.get("name"), "lines": [0, 0], "text": f"{s.get('kind')} {s.get('name')} // {s.get('file')}" }) return out
+

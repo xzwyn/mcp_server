@@ -1,0 +1,7 @@
+{
+  "idColumn": "RequirementID",
+  "titleColumn": "Title",
+  "textColumn": "Description",
+  "additionalColumns": [],
+  "idPattern": null
+}

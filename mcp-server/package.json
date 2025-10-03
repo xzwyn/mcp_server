@@ -1,0 +1,13 @@
+{
+  "name": "mcp-tdf-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local MCP server for TDF updates (skeleton)",
+  "main": "mcp-tdf-server.mjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.1.4"
+  },
+  "scripts": {
+    "start": "node mcp-tdf-server.mjs"
+  }
+}
